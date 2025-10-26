@@ -6,9 +6,22 @@ import asyncio
 import re
 import os
 from dotenv import load_dotenv
+from flask import Flask
+import threading
 
 # Load environment variables
 load_dotenv()
+
+# Initialize Flask app
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return 'Bot is running! 🤖'
+
+def run_flask():
+    """Run Flask app"""
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
 
 
 # ============================================
@@ -787,11 +800,24 @@ async def on_command_error(ctx, error):
 
 
 # ============================================
-# RUN BOT
+# RUN BOT AND SERVER
 # ============================================
 if __name__ == "__main__":
     # Get token from environment variables
     token = os.getenv('DISCORD_BOT_TOKEN')
     if not token:
         raise ValueError("No token found. Make sure DISCORD_BOT_TOKEN is set in .env file")
-    bot.run(token)
+    
+    # Start Flask in a separate thread
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    
+    # Run the Discord bot
+    try:
+        bot.run(token)
+    except Exception as e:
+        print(f"Bot error: {e}")
+    finally:
+        # Keep the Flask server running even if bot fails
+        if flask_thread.is_alive():
+            flask_thread.join()
